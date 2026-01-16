@@ -18,36 +18,6 @@
             display: flex;
         }
 
-        .sidebar {
-            width: 60px;
-            height: 100vh;
-            background: rgba(0, 0, 0, 0.8);
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            gap: 15px;
-            z-index: 100;
-        }
-
-        .sidebar-dot {
-            width: 12px;
-            height: 12px;
-            border-radius: 50%;
-            background: rgba(255, 255, 255, 0.4);
-            cursor: pointer;
-            transition: all 0.2s ease;
-        }
-
-        .sidebar-dot.active {
-            background: white;
-            transform: scale(1.3);
-        }
-
-        .sidebar-dot:hover {
-            background: rgba(255, 255, 255, 0.7);
-        }
-
         .carousel-container {
             flex: 1;
             height: 100vh;
@@ -60,7 +30,6 @@
             height: 100vh;
             display: flex;
             flex-direction: column;
-            /* SEM TRANSIÇÃO - mudança instantânea */
         }
 
         .carousel-item {
@@ -75,46 +44,78 @@
             object-fit: cover;
         }
 
+        /* Barra de rolagem estilo navegador */
+        .scrollbar {
+            width: 16px;
+            height: 100vh;
+            background: rgba(0, 0, 0, 0.1);
+            position: relative;
+            cursor: pointer;
+        }
+
+        .scrollbar-track {
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.05);
+            position: relative;
+        }
+
+        .scrollbar-thumb {
+            width: 100%;
+            background: rgba(0, 0, 0, 0.4);
+            border-radius: 8px;
+            position: absolute;
+            top: 0;
+            transition: background 0.2s ease;
+            cursor: grab;
+        }
+
+        .scrollbar-thumb:hover {
+            background: rgba(0, 0, 0, 0.6);
+        }
+
+        .scrollbar-thumb:active {
+            cursor: grabbing;
+            background: rgba(0, 0, 0, 0.8);
+        }
+
         @media (max-width: 600px) {
-            .sidebar {
-                width: 40px;
-            }
-            
-            .sidebar-dot {
+            .scrollbar {
                 width: 8px;
-                height: 8px;
             }
         }
     </style>
 </head>
 <body>
-    <div class="sidebar" id="sidebar"></div>
-    
     <div class="carousel-container">
         <div class="carousel-track" id="carouselTrack"></div>
+    </div>
+
+    <div class="scrollbar" id="scrollbar">
+        <div class="scrollbar-track">
+            <div class="scrollbar-thumb" id="scrollbarThumb"></div>
+        </div>
     </div>
 
     <script>
         // CUSTOMIZE SUAS IMAGENS AQUI
         const images = [
-            'images/1.png',
-            'images/1.png',
-            'images/2.png',
-            'images/3.png',
-            'images/4.png',
-            'images/5.png',
-            'images/6.png',
-            'images/7.png',
-            'images/8.png',
-            'images/9.png',
-            'images/10.png',
+            './images/1.jpg',
+            './images/2.jpg',
+            './images/3.jpg',
+            './images/4.jpg',
+            './images/4.jpg'
         ];
 
         let currentIndex = 0;
         let lastScrollTime = 0;
         const scrollThrottle = 300;
         const track = document.getElementById('carouselTrack');
-        const sidebar = document.getElementById('sidebar');
+        const scrollbar = document.getElementById('scrollbar');
+        const scrollbarThumb = document.getElementById('scrollbarThumb');
+        
+        let isDragging = false;
+        let startY = 0;
 
         // Cria as imagens
         images.forEach((img, index) => {
@@ -125,28 +126,24 @@
             imgElement.alt = `Imagem ${index + 1}`;
             item.appendChild(imgElement);
             track.appendChild(item);
-
-            // Cria dot na sidebar
-            const dot = document.createElement('div');
-            dot.className = 'sidebar-dot';
-            if (index === 0) dot.classList.add('active');
-            dot.addEventListener('click', () => goToSlide(index));
-            sidebar.appendChild(dot);
         });
 
-        // Atualiza posição (INSTANTÂNEO - SEM transition no CSS)
+        // Calcula tamanho do thumb baseado no número de imagens
+        const thumbHeight = (100 / images.length);
+        scrollbarThumb.style.height = thumbHeight + '%';
+
+        // Atualiza posição do carrossel e scrollbar
         function updateCarousel() {
             track.style.transform = `translateY(-${currentIndex * 100}vh)`;
             
-            // Atualiza dots da sidebar
-            document.querySelectorAll('.sidebar-dot').forEach((dot, index) => {
-                dot.classList.toggle('active', index === currentIndex);
-            });
+            // Atualiza posição do thumb
+            const thumbPosition = (currentIndex / images.length) * 100;
+            scrollbarThumb.style.top = thumbPosition + '%';
         }
 
         // Vai para slide específico
         function goToSlide(index) {
-            currentIndex = index;
+            currentIndex = Math.max(0, Math.min(images.length - 1, index));
             updateCarousel();
         }
 
@@ -175,6 +172,46 @@
             }
             e.preventDefault();
         }, { passive: false });
+
+        // Clique na scrollbar
+        scrollbar.addEventListener('click', (e) => {
+            if (e.target === scrollbarThumb) return;
+            
+            const rect = scrollbar.getBoundingClientRect();
+            const clickY = e.clientY - rect.top;
+            const percentage = clickY / rect.height;
+            const targetIndex = Math.floor(percentage * images.length);
+            goToSlide(targetIndex);
+        });
+
+        // Arrastar o thumb
+        scrollbarThumb.addEventListener('mousedown', (e) => {
+            isDragging = true;
+            startY = e.clientY;
+            scrollbarThumb.style.transition = 'none';
+            e.preventDefault();
+        });
+
+        document.addEventListener('mousemove', (e) => {
+            if (!isDragging) return;
+            
+            const rect = scrollbar.getBoundingClientRect();
+            const deltaY = e.clientY - startY;
+            const thumbRect = scrollbarThumb.getBoundingClientRect();
+            const newTop = thumbRect.top - rect.top + deltaY;
+            const percentage = newTop / (rect.height - thumbRect.height);
+            const targetIndex = Math.round(percentage * (images.length - 1));
+            
+            startY = e.clientY;
+            goToSlide(targetIndex);
+        });
+
+        document.addEventListener('mouseup', () => {
+            if (isDragging) {
+                isDragging = false;
+                scrollbarThumb.style.transition = '';
+            }
+        });
 
         // Touch/swipe mobile
         let touchStartY = 0;
@@ -205,6 +242,9 @@
                 e.preventDefault();
             }
         });
+
+        // Inicializa
+        updateCarousel();
     </script>
 </body>
 </html>
