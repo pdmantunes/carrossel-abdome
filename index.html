@@ -23,6 +23,8 @@
             height: 100vh;
             overflow: hidden;
             position: relative;
+            touch-action: none;
+            user-select: none;
         }
 
         .carousel-track {
@@ -30,6 +32,11 @@
             height: 100vh;
             display: flex;
             flex-direction: column;
+            transition: transform 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+        }
+
+        .carousel-track.dragging {
+            transition: none;
         }
 
         .carousel-item {
@@ -42,6 +49,7 @@
             width: 100%;
             height: 100%;
             object-fit: cover;
+            pointer-events: none;
         }
 
         /* Barra de rolagem melhorada */
@@ -141,7 +149,7 @@
     </style>
 </head>
 <body>
-    <div class="carousel-container">
+    <div class="carousel-container" id="carouselContainer">
         <div class="carousel-track" id="carouselTrack"></div>
     </div>
 
@@ -169,16 +177,20 @@
         ];
 
         let currentIndex = 0;
+        let currentPosition = 0; // Posição real em vh
         let lastScrollTime = 0;
         const scrollThrottle = 300;
         const track = document.getElementById('carouselTrack');
+        const carouselContainer = document.getElementById('carouselContainer');
         const scrollbar = document.getElementById('scrollbar');
         const scrollbarTrack = document.getElementById('scrollbarTrack');
         const scrollbarThumb = document.getElementById('scrollbarThumb');
         const positionIndicator = document.getElementById('positionIndicator');
         
-        let isDragging = false;
+        let isDraggingContent = false;
+        let isDraggingScrollbar = false;
         let startY = 0;
+        let startPosition = 0;
         let indicatorTimeout = null;
 
         // Cria as imagens
@@ -208,15 +220,42 @@
         }
 
         // Atualiza posição do carrossel e scrollbar
-        function updateCarousel() {
-            track.style.transform = `translateY(-${currentIndex * 100}vh)`;
+        function updateCarousel(smooth = true) {
+            currentPosition = currentIndex * 100;
             
-            // Atualiza posição do thumb
+            if (smooth) {
+                track.classList.remove('dragging');
+            }
+            
+            track.style.transform = `translateY(-${currentPosition}vh)`;
+            updateScrollbarThumb();
+            showPositionIndicator();
+        }
+
+        // Atualiza apenas o thumb da scrollbar
+        function updateScrollbarThumb() {
             const maxScroll = images.length - 1;
             const thumbPosition = maxScroll > 0 ? (currentIndex / maxScroll) * (100 - thumbHeight) : 0;
             scrollbarThumb.style.top = thumbPosition + '%';
+        }
+
+        // Aplica posição durante o drag
+        function applyPosition(position) {
+            track.style.transform = `translateY(-${position}vh)`;
             
-            showPositionIndicator();
+            // Atualiza índice atual baseado na posição
+            const newIndex = Math.max(0, Math.min(images.length - 1, Math.round(position / 100)));
+            if (newIndex !== currentIndex) {
+                currentIndex = newIndex;
+                updateScrollbarThumb();
+                showPositionIndicator();
+            }
+        }
+
+        // Encaixa na imagem mais próxima
+        function snapToNearest() {
+            currentIndex = Math.max(0, Math.min(images.length - 1, Math.round(currentPosition / 100)));
+            updateCarousel(true);
         }
 
         // Vai para slide específico
@@ -227,30 +266,82 @@
 
         // Próxima imagem
         function nextSlide() {
-            currentIndex = (currentIndex + 1) % images.length;
-            updateCarousel();
+            if (currentIndex < images.length - 1) {
+                currentIndex++;
+                updateCarousel();
+            }
         }
 
         // Imagem anterior
         function prevSlide() {
-            currentIndex = (currentIndex - 1 + images.length) % images.length;
-            updateCarousel();
+            if (currentIndex > 0) {
+                currentIndex--;
+                updateCarousel();
+            }
         }
 
-        // Scroll do mouse
-        window.addEventListener('wheel', (e) => {
-            const now = Date.now();
-            if (now - lastScrollTime < scrollThrottle) return;
-            lastScrollTime = now;
-            
-            if (e.deltaY > 0) {
-                nextSlide();
-            } else if (e.deltaY < 0) {
-                prevSlide();
-            }
-            e.preventDefault();
-        }, { passive: false });
+        // ========== DRAG NO CONTEÚDO (IMAGENS) ==========
+        
+        // Mouse down no conteúdo
+        carouselContainer.addEventListener('mousedown', (e) => {
+            isDraggingContent = true;
+            startY = e.clientY;
+            startPosition = currentPosition;
+            track.classList.add('dragging');
+            carouselContainer.style.cursor = 'grabbing';
+        });
 
+        // Mouse move
+        document.addEventListener('mousemove', (e) => {
+            if (!isDraggingContent) return;
+            
+            const deltaY = startY - e.clientY;
+            const deltaVh = (deltaY / window.innerHeight) * 100;
+            const newPosition = Math.max(0, Math.min((images.length - 1) * 100, startPosition + deltaVh));
+            
+            currentPosition = newPosition;
+            applyPosition(currentPosition);
+        });
+
+        // Mouse up
+        document.addEventListener('mouseup', () => {
+            if (isDraggingContent) {
+                isDraggingContent = false;
+                carouselContainer.style.cursor = 'grab';
+                snapToNearest();
+            }
+        });
+
+        // Touch start no conteúdo
+        carouselContainer.addEventListener('touchstart', (e) => {
+            isDraggingContent = true;
+            startY = e.touches[0].clientY;
+            startPosition = currentPosition;
+            track.classList.add('dragging');
+        }, { passive: true });
+
+        // Touch move no conteúdo
+        carouselContainer.addEventListener('touchmove', (e) => {
+            if (!isDraggingContent) return;
+            
+            const deltaY = startY - e.touches[0].clientY;
+            const deltaVh = (deltaY / window.innerHeight) * 100;
+            const newPosition = Math.max(0, Math.min((images.length - 1) * 100, startPosition + deltaVh));
+            
+            currentPosition = newPosition;
+            applyPosition(currentPosition);
+        }, { passive: true });
+
+        // Touch end no conteúdo
+        carouselContainer.addEventListener('touchend', () => {
+            if (isDraggingContent) {
+                isDraggingContent = false;
+                snapToNearest();
+            }
+        }, { passive: true });
+
+        // ========== SCROLLBAR ==========
+        
         // Clique na scrollbar
         scrollbar.addEventListener('click', (e) => {
             if (e.target === scrollbarThumb) return;
@@ -262,65 +353,67 @@
             goToSlide(targetIndex);
         });
 
-        // Função para lidar com drag (mouse e touch)
-        function handleDragStart(clientY, e) {
-            isDragging = true;
-            startY = clientY;
+        // Drag da scrollbar - Mouse
+        scrollbarThumb.addEventListener('mousedown', (e) => {
+            isDraggingScrollbar = true;
+            startY = e.clientY;
             scrollbarThumb.style.transition = 'none';
-            if (e.preventDefault) e.preventDefault();
-        }
+            e.preventDefault();
+            e.stopPropagation();
+        });
 
-        function handleDragMove(clientY) {
-            if (!isDragging) return;
+        document.addEventListener('mousemove', (e) => {
+            if (!isDraggingScrollbar) return;
             
             const rect = scrollbarTrack.getBoundingClientRect();
-            const deltaY = clientY - startY;
+            const deltaY = e.clientY - startY;
             const thumbRect = scrollbarThumb.getBoundingClientRect();
             const newTop = thumbRect.top - rect.top + deltaY;
             const maxTop = rect.height - thumbRect.height;
             const percentage = Math.max(0, Math.min(1, newTop / maxTop));
             const targetIndex = Math.round(percentage * (images.length - 1));
             
-            startY = clientY;
+            startY = e.clientY;
             goToSlide(targetIndex);
-        }
+        });
 
-        function handleDragEnd() {
-            if (isDragging) {
-                isDragging = false;
+        document.addEventListener('mouseup', () => {
+            if (isDraggingScrollbar) {
+                isDraggingScrollbar = false;
                 scrollbarThumb.style.transition = '';
             }
-        }
-
-        // Mouse events para desktop
-        scrollbarThumb.addEventListener('mousedown', (e) => {
-            handleDragStart(e.clientY, e);
         });
 
-        document.addEventListener('mousemove', (e) => {
-            handleDragMove(e.clientY);
-        });
-
-        document.addEventListener('mouseup', handleDragEnd);
-
-        // Touch events para mobile na scrollbar
+        // Drag da scrollbar - Touch
         scrollbarThumb.addEventListener('touchstart', (e) => {
-            handleDragStart(e.touches[0].clientY, e);
+            isDraggingScrollbar = true;
+            startY = e.touches[0].clientY;
+            scrollbarThumb.style.transition = 'none';
+            e.preventDefault();
+            e.stopPropagation();
         }, { passive: false });
 
         document.addEventListener('touchmove', (e) => {
-            if (isDragging) {
-                handleDragMove(e.touches[0].clientY);
-                e.preventDefault();
-            }
+            if (!isDraggingScrollbar) return;
+            
+            const rect = scrollbarTrack.getBoundingClientRect();
+            const deltaY = e.touches[0].clientY - startY;
+            const thumbRect = scrollbarThumb.getBoundingClientRect();
+            const newTop = thumbRect.top - rect.top + deltaY;
+            const maxTop = rect.height - thumbRect.height;
+            const percentage = Math.max(0, Math.min(1, newTop / maxTop));
+            const targetIndex = Math.round(percentage * (images.length - 1));
+            
+            startY = e.touches[0].clientY;
+            goToSlide(targetIndex);
         }, { passive: false });
 
-        document.addEventListener('touchend', (e) => {
-            if (isDragging) {
-                handleDragEnd();
-                e.preventDefault();
+        document.addEventListener('touchend', () => {
+            if (isDraggingScrollbar) {
+                isDraggingScrollbar = false;
+                scrollbarThumb.style.transition = '';
             }
-        }, { passive: false });
+        }, { passive: true });
 
         // Touch na track da scrollbar
         scrollbarTrack.addEventListener('touchstart', (e) => {
@@ -334,33 +427,23 @@
             e.preventDefault();
         }, { passive: false });
 
-        // Touch/swipe mobile no conteúdo principal
-        let touchStartY = 0;
-        let touchStartX = 0;
-        const carouselContainer = document.querySelector('.carousel-container');
-        
-        carouselContainer.addEventListener('touchstart', (e) => {
-            touchStartY = e.touches[0].clientY;
-            touchStartX = e.touches[0].clientX;
-        }, { passive: true });
-
-        carouselContainer.addEventListener('touchend', (e) => {
-            const touchEndY = e.changedTouches[0].clientY;
-            const touchEndX = e.changedTouches[0].clientX;
-            const diffY = touchStartY - touchEndY;
-            const diffX = touchStartX - touchEndX;
+        // ========== SCROLL DO MOUSE ==========
+        window.addEventListener('wheel', (e) => {
+            if (isDraggingContent || isDraggingScrollbar) return;
             
-            // Garante que é um swipe vertical
-            if (Math.abs(diffY) > Math.abs(diffX) && Math.abs(diffY) > 50) {
-                if (diffY > 0) {
-                    nextSlide();
-                } else {
-                    prevSlide();
-                }
+            const now = Date.now();
+            if (now - lastScrollTime < scrollThrottle) return;
+            lastScrollTime = now;
+            
+            if (e.deltaY > 0) {
+                nextSlide();
+            } else if (e.deltaY < 0) {
+                prevSlide();
             }
-        }, { passive: true });
+            e.preventDefault();
+        }, { passive: false });
 
-        // Teclado
+        // ========== TECLADO ==========
         document.addEventListener('keydown', (e) => {
             if (e.key === 'ArrowDown') {
                 nextSlide();
@@ -372,7 +455,8 @@
         });
 
         // Inicializa
+        carouselContainer.style.cursor = 'grab';
         updateCarousel();
     </script>
 </body>
-</html>
+</htm
