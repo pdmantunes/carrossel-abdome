@@ -16,6 +16,7 @@
             height: 100vh;
             overflow: hidden;
             display: flex;
+            background: #000;
         }
 
         .carousel-container {
@@ -32,11 +33,7 @@
             height: 100vh;
             display: flex;
             flex-direction: column;
-            transition: transform 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
-        }
-
-        .carousel-track.dragging {
-            transition: none;
+            transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1);
         }
 
         .carousel-item {
@@ -52,99 +49,185 @@
             pointer-events: none;
         }
 
-        /* Barra de rolagem melhorada */
+        /* Barra lateral moderna */
         .scrollbar {
-            width: 32px;
+            width: 80px;
             height: 100vh;
-            background: rgba(200, 200, 200, 0.4);
+            background: linear-gradient(90deg, rgba(0,0,0,0.8) 0%, rgba(0,0,0,0.6) 100%);
             position: relative;
-            cursor: pointer;
             flex-shrink: 0;
             display: flex;
+            flex-direction: column;
             align-items: center;
-            justify-content: center;
+            padding: 30px 0;
+            backdrop-filter: blur(10px);
         }
 
         .scrollbar-track {
-            width: 12px;
-            height: 100%;
-            background: rgba(220, 220, 220, 0.3);
+            width: 4px;
+            flex: 1;
+            background: rgba(255, 255, 255, 0.15);
             position: relative;
-            border-radius: 6px;
+            border-radius: 2px;
+            margin: 20px 0;
         }
 
         .scrollbar-thumb {
             width: 100%;
-            background: rgba(150, 150, 150, 0.8);
-            border-radius: 6px;
+            background: linear-gradient(180deg, rgba(255,255,255,0.9) 0%, rgba(255,255,255,0.7) 100%);
+            border-radius: 2px;
             position: absolute;
             top: 0;
-            transition: background 0.2s ease, width 0.2s ease;
-            cursor: grab;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            cursor: pointer;
             min-height: 40px;
+            box-shadow: 0 2px 8px rgba(255,255,255,0.3);
         }
 
-        .scrollbar-thumb:hover,
+        .scrollbar-thumb::before {
+            content: '';
+            position: absolute;
+            left: 50%;
+            top: 50%;
+            transform: translate(-50%, -50%);
+            width: 20px;
+            height: 20px;
+            background: rgba(255,255,255,0.2);
+            border-radius: 50%;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+
+        .scrollbar-thumb:hover::before,
+        .scrollbar-thumb:active::before {
+            opacity: 1;
+        }
+
+        .scrollbar-thumb:hover {
+            background: linear-gradient(180deg, rgba(255,255,255,1) 0%, rgba(255,255,255,0.9) 100%);
+            width: 6px;
+            margin-left: -1px;
+            box-shadow: 0 4px 12px rgba(255,255,255,0.5);
+        }
+
         .scrollbar-thumb:active {
-            background: rgba(100, 100, 100, 0.95);
-            width: 16px;
+            background: #fff;
+            width: 8px;
             margin-left: -2px;
         }
 
-        .scrollbar-thumb:active {
-            cursor: grabbing;
+        /* Dots indicator */
+        .dots-container {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            align-items: center;
+            margin-top: 20px;
         }
 
-        /* Melhorias para mobile */
+        .dot {
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.3);
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+
+        .dot.active {
+            background: #fff;
+            width: 8px;
+            height: 8px;
+            box-shadow: 0 0 8px rgba(255,255,255,0.6);
+        }
+
+        .dot:hover {
+            background: rgba(255, 255, 255, 0.7);
+            transform: scale(1.3);
+        }
+
+        /* Counter */
+        .counter {
+            color: rgba(255, 255, 255, 0.8);
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            font-size: 13px;
+            font-weight: 500;
+            letter-spacing: 1px;
+            margin-bottom: 10px;
+            text-align: center;
+        }
+
+        .counter .current {
+            color: #fff;
+            font-size: 24px;
+            font-weight: 600;
+            display: block;
+            margin-bottom: 5px;
+        }
+
+        .counter .total {
+            font-size: 11px;
+            opacity: 0.6;
+        }
+
+        /* Mobile adjustments */
         @media (max-width: 768px) {
             .scrollbar {
-                width: 48px;
-                background: rgba(200, 200, 200, 0.3);
+                width: 60px;
+                padding: 20px 0;
             }
 
             .scrollbar-track {
-                width: 16px;
+                margin: 15px 0;
             }
 
             .scrollbar-thumb {
-                background: rgba(120, 120, 120, 0.85);
-                min-height: 60px;
+                min-height: 50px;
             }
 
-            .scrollbar-thumb:active {
-                width: 20px;
-                margin-left: -2px;
-                background: rgba(80, 80, 80, 0.95);
+            .counter .current {
+                font-size: 20px;
+            }
+
+            .dots-container {
+                gap: 6px;
+                margin-top: 15px;
+            }
+
+            .dot {
+                width: 5px;
+                height: 5px;
+            }
+
+            .dot.active {
+                width: 7px;
+                height: 7px;
             }
         }
 
-        /* Indicador visual de posição */
+        /* Indicador flutuante */
         .position-indicator {
             position: fixed;
-            top: 20px;
-            right: 70px;
-            background: rgba(0, 0, 0, 0.6);
+            top: 30px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0, 0, 0, 0.8);
             color: white;
-            padding: 8px 16px;
-            border-radius: 20px;
-            font-family: Arial, sans-serif;
+            padding: 10px 20px;
+            border-radius: 25px;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
             font-size: 14px;
+            font-weight: 500;
             pointer-events: none;
             opacity: 0;
             transition: opacity 0.3s ease;
             z-index: 100;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
         }
 
         .position-indicator.show {
             opacity: 1;
-        }
-
-        @media (max-width: 768px) {
-            .position-indicator {
-                right: 65px;
-                font-size: 12px;
-                padding: 6px 12px;
-            }
         }
     </style>
 </head>
@@ -154,12 +237,19 @@
     </div>
 
     <div class="scrollbar" id="scrollbar">
+        <div class="counter" id="counter">
+            <span class="current" id="currentNumber">1</span>
+            <span class="total" id="totalNumber">/ 10</span>
+        </div>
+        
         <div class="scrollbar-track" id="scrollbarTrack">
             <div class="scrollbar-thumb" id="scrollbarThumb"></div>
         </div>
+
+        <div class="dots-container" id="dotsContainer"></div>
     </div>
 
-    <div class="position-indicator" id="positionIndicator">1 / 10</div>
+    <div class="position-indicator" id="positionIndicator">Imagem 1 de 10</div>
 
     <script>
         // CUSTOMIZE SUAS IMAGENS AQUI
@@ -177,20 +267,23 @@
         ];
 
         let currentIndex = 0;
-        let currentPosition = 0; // Posição real em vh
         let lastScrollTime = 0;
         const scrollThrottle = 300;
+        const SWIPE_THRESHOLD = 50; // pixels para trocar de imagem
+        
         const track = document.getElementById('carouselTrack');
         const carouselContainer = document.getElementById('carouselContainer');
         const scrollbar = document.getElementById('scrollbar');
         const scrollbarTrack = document.getElementById('scrollbarTrack');
         const scrollbarThumb = document.getElementById('scrollbarThumb');
         const positionIndicator = document.getElementById('positionIndicator');
+        const dotsContainer = document.getElementById('dotsContainer');
+        const currentNumber = document.getElementById('currentNumber');
+        const totalNumber = document.getElementById('totalNumber');
         
         let isDraggingContent = false;
         let isDraggingScrollbar = false;
         let startY = 0;
-        let startPosition = 0;
         let indicatorTimeout = null;
 
         // Cria as imagens
@@ -204,13 +297,25 @@
             track.appendChild(item);
         });
 
-        // Calcula tamanho do thumb baseado no número de imagens
-        const thumbHeight = Math.max((100 / images.length), 8);
+        // Cria dots
+        images.forEach((_, index) => {
+            const dot = document.createElement('div');
+            dot.className = 'dot';
+            if (index === 0) dot.classList.add('active');
+            dot.addEventListener('click', () => goToSlide(index));
+            dotsContainer.appendChild(dot);
+        });
+
+        // Atualiza total
+        totalNumber.textContent = `/ ${images.length}`;
+
+        // Calcula tamanho do thumb
+        const thumbHeight = Math.max((100 / images.length), 6);
         scrollbarThumb.style.height = thumbHeight + '%';
 
         // Mostra indicador de posição
         function showPositionIndicator() {
-            positionIndicator.textContent = `${currentIndex + 1} / ${images.length}`;
+            positionIndicator.textContent = `Imagem ${currentIndex + 1} de ${images.length}`;
             positionIndicator.classList.add('show');
             
             clearTimeout(indicatorTimeout);
@@ -219,56 +324,38 @@
             }, 1500);
         }
 
-        // Atualiza posição do carrossel e scrollbar
-        function updateCarousel(smooth = true) {
-            currentPosition = currentIndex * 100;
+        // Atualiza UI completa
+        function updateUI() {
+            // Atualiza carrossel
+            track.style.transform = `translateY(-${currentIndex * 100}vh)`;
             
-            if (smooth) {
-                track.classList.remove('dragging');
-            }
-            
-            track.style.transform = `translateY(-${currentPosition}vh)`;
-            updateScrollbarThumb();
-            showPositionIndicator();
-        }
-
-        // Atualiza apenas o thumb da scrollbar
-        function updateScrollbarThumb() {
+            // Atualiza scrollbar thumb
             const maxScroll = images.length - 1;
             const thumbPosition = maxScroll > 0 ? (currentIndex / maxScroll) * (100 - thumbHeight) : 0;
             scrollbarThumb.style.top = thumbPosition + '%';
-        }
-
-        // Aplica posição durante o drag
-        function applyPosition(position) {
-            track.style.transform = `translateY(-${position}vh)`;
             
-            // Atualiza índice atual baseado na posição
-            const newIndex = Math.max(0, Math.min(images.length - 1, Math.round(position / 100)));
-            if (newIndex !== currentIndex) {
-                currentIndex = newIndex;
-                updateScrollbarThumb();
-                showPositionIndicator();
-            }
-        }
-
-        // Encaixa na imagem mais próxima
-        function snapToNearest() {
-            currentIndex = Math.max(0, Math.min(images.length - 1, Math.round(currentPosition / 100)));
-            updateCarousel(true);
+            // Atualiza counter
+            currentNumber.textContent = currentIndex + 1;
+            
+            // Atualiza dots
+            document.querySelectorAll('.dot').forEach((dot, index) => {
+                dot.classList.toggle('active', index === currentIndex);
+            });
+            
+            showPositionIndicator();
         }
 
         // Vai para slide específico
         function goToSlide(index) {
             currentIndex = Math.max(0, Math.min(images.length - 1, index));
-            updateCarousel();
+            updateUI();
         }
 
         // Próxima imagem
         function nextSlide() {
             if (currentIndex < images.length - 1) {
                 currentIndex++;
-                updateCarousel();
+                updateUI();
             }
         }
 
@@ -276,18 +363,16 @@
         function prevSlide() {
             if (currentIndex > 0) {
                 currentIndex--;
-                updateCarousel();
+                updateUI();
             }
         }
 
-        // ========== DRAG NO CONTEÚDO (IMAGENS) ==========
+        // ========== DRAG NO CONTEÚDO - THRESHOLD BAIXO ==========
         
-        // Mouse down no conteúdo
+        // Mouse down
         carouselContainer.addEventListener('mousedown', (e) => {
             isDraggingContent = true;
             startY = e.clientY;
-            startPosition = currentPosition;
-            track.classList.add('dragging');
             carouselContainer.style.cursor = 'grabbing';
         });
 
@@ -296,11 +381,16 @@
             if (!isDraggingContent) return;
             
             const deltaY = startY - e.clientY;
-            const deltaVh = (deltaY / window.innerHeight) * 100;
-            const newPosition = Math.max(0, Math.min((images.length - 1) * 100, startPosition + deltaVh));
             
-            currentPosition = newPosition;
-            applyPosition(currentPosition);
+            if (Math.abs(deltaY) > SWIPE_THRESHOLD) {
+                if (deltaY > 0) {
+                    nextSlide();
+                } else {
+                    prevSlide();
+                }
+                isDraggingContent = false;
+                carouselContainer.style.cursor = 'grab';
+            }
         });
 
         // Mouse up
@@ -308,43 +398,43 @@
             if (isDraggingContent) {
                 isDraggingContent = false;
                 carouselContainer.style.cursor = 'grab';
-                snapToNearest();
             }
         });
 
-        // Touch start no conteúdo
+        // Touch start
         carouselContainer.addEventListener('touchstart', (e) => {
             isDraggingContent = true;
             startY = e.touches[0].clientY;
-            startPosition = currentPosition;
-            track.classList.add('dragging');
         }, { passive: true });
 
-        // Touch move no conteúdo
+        // Touch move
         carouselContainer.addEventListener('touchmove', (e) => {
             if (!isDraggingContent) return;
             
             const deltaY = startY - e.touches[0].clientY;
-            const deltaVh = (deltaY / window.innerHeight) * 100;
-            const newPosition = Math.max(0, Math.min((images.length - 1) * 100, startPosition + deltaVh));
             
-            currentPosition = newPosition;
-            applyPosition(currentPosition);
+            if (Math.abs(deltaY) > SWIPE_THRESHOLD) {
+                if (deltaY > 0) {
+                    nextSlide();
+                } else {
+                    prevSlide();
+                }
+                isDraggingContent = false;
+            }
         }, { passive: true });
 
-        // Touch end no conteúdo
+        // Touch end
         carouselContainer.addEventListener('touchend', () => {
-            if (isDraggingContent) {
-                isDraggingContent = false;
-                snapToNearest();
-            }
+            isDraggingContent = false;
         }, { passive: true });
 
         // ========== SCROLLBAR ==========
         
         // Clique na scrollbar
         scrollbar.addEventListener('click', (e) => {
-            if (e.target === scrollbarThumb) return;
+            if (e.target === scrollbarThumb || e.target.classList.contains('dot') || 
+                e.target.classList.contains('counter') || e.target === currentNumber || 
+                e.target === totalNumber) return;
             
             const rect = scrollbarTrack.getBoundingClientRect();
             const clickY = e.clientY - rect.top;
@@ -353,11 +443,10 @@
             goToSlide(targetIndex);
         });
 
-        // Drag da scrollbar - Mouse
+        // Drag scrollbar - Mouse
         scrollbarThumb.addEventListener('mousedown', (e) => {
             isDraggingScrollbar = true;
             startY = e.clientY;
-            scrollbarThumb.style.transition = 'none';
             e.preventDefault();
             e.stopPropagation();
         });
@@ -378,17 +467,13 @@
         });
 
         document.addEventListener('mouseup', () => {
-            if (isDraggingScrollbar) {
-                isDraggingScrollbar = false;
-                scrollbarThumb.style.transition = '';
-            }
+            isDraggingScrollbar = false;
         });
 
-        // Drag da scrollbar - Touch
+        // Drag scrollbar - Touch
         scrollbarThumb.addEventListener('touchstart', (e) => {
             isDraggingScrollbar = true;
             startY = e.touches[0].clientY;
-            scrollbarThumb.style.transition = 'none';
             e.preventDefault();
             e.stopPropagation();
         }, { passive: false });
@@ -409,23 +494,8 @@
         }, { passive: false });
 
         document.addEventListener('touchend', () => {
-            if (isDraggingScrollbar) {
-                isDraggingScrollbar = false;
-                scrollbarThumb.style.transition = '';
-            }
+            isDraggingScrollbar = false;
         }, { passive: true });
-
-        // Touch na track da scrollbar
-        scrollbarTrack.addEventListener('touchstart', (e) => {
-            if (e.target === scrollbarThumb) return;
-            
-            const rect = scrollbarTrack.getBoundingClientRect();
-            const touchY = e.touches[0].clientY - rect.top;
-            const percentage = touchY / rect.height;
-            const targetIndex = Math.floor(percentage * images.length);
-            goToSlide(targetIndex);
-            e.preventDefault();
-        }, { passive: false });
 
         // ========== SCROLL DO MOUSE ==========
         window.addEventListener('wheel', (e) => {
@@ -445,10 +515,10 @@
 
         // ========== TECLADO ==========
         document.addEventListener('keydown', (e) => {
-            if (e.key === 'ArrowDown') {
+            if (e.key === 'ArrowDown' || e.key === 'ArrowRight') {
                 nextSlide();
                 e.preventDefault();
-            } else if (e.key === 'ArrowUp') {
+            } else if (e.key === 'ArrowUp' || e.key === 'ArrowLeft') {
                 prevSlide();
                 e.preventDefault();
             }
@@ -456,7 +526,7 @@
 
         // Inicializa
         carouselContainer.style.cursor = 'grab';
-        updateCarousel();
+        updateUI();
     </script>
 </body>
-</htm
+</html>
