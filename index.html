@@ -44,44 +44,98 @@
             object-fit: cover;
         }
 
-        /* Barra de rolagem estilo navegador - MAIS APARENTE */
+        /* Barra de rolagem melhorada */
         .scrollbar {
-            width: 24px;
+            width: 32px;
             height: 100vh;
             background: rgba(200, 200, 200, 0.4);
             position: relative;
             cursor: pointer;
+            flex-shrink: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
         }
 
         .scrollbar-track {
-            width: 100%;
+            width: 12px;
             height: 100%;
             background: rgba(220, 220, 220, 0.3);
             position: relative;
+            border-radius: 6px;
         }
 
         .scrollbar-thumb {
             width: 100%;
-            background: rgba(150, 150, 150, 0.7);
-            border-radius: 8px;
+            background: rgba(150, 150, 150, 0.8);
+            border-radius: 6px;
             position: absolute;
             top: 0;
-            transition: background 0.2s ease;
+            transition: background 0.2s ease, width 0.2s ease;
             cursor: grab;
+            min-height: 40px;
         }
 
-        .scrollbar-thumb:hover {
-            background: rgba(120, 120, 120, 0.85);
+        .scrollbar-thumb:hover,
+        .scrollbar-thumb:active {
+            background: rgba(100, 100, 100, 0.95);
+            width: 16px;
+            margin-left: -2px;
         }
 
         .scrollbar-thumb:active {
             cursor: grabbing;
-            background: rgba(100, 100, 100, 0.95);
         }
 
-        @media (max-width: 600px) {
+        /* Melhorias para mobile */
+        @media (max-width: 768px) {
             .scrollbar {
+                width: 48px;
+                background: rgba(200, 200, 200, 0.3);
+            }
+
+            .scrollbar-track {
                 width: 16px;
+            }
+
+            .scrollbar-thumb {
+                background: rgba(120, 120, 120, 0.85);
+                min-height: 60px;
+            }
+
+            .scrollbar-thumb:active {
+                width: 20px;
+                margin-left: -2px;
+                background: rgba(80, 80, 80, 0.95);
+            }
+        }
+
+        /* Indicador visual de posição */
+        .position-indicator {
+            position: fixed;
+            top: 20px;
+            right: 70px;
+            background: rgba(0, 0, 0, 0.6);
+            color: white;
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-family: Arial, sans-serif;
+            font-size: 14px;
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+            z-index: 100;
+        }
+
+        .position-indicator.show {
+            opacity: 1;
+        }
+
+        @media (max-width: 768px) {
+            .position-indicator {
+                right: 65px;
+                font-size: 12px;
+                padding: 6px 12px;
             }
         }
     </style>
@@ -92,10 +146,12 @@
     </div>
 
     <div class="scrollbar" id="scrollbar">
-        <div class="scrollbar-track">
+        <div class="scrollbar-track" id="scrollbarTrack">
             <div class="scrollbar-thumb" id="scrollbarThumb"></div>
         </div>
     </div>
+
+    <div class="position-indicator" id="positionIndicator">1 / 10</div>
 
     <script>
         // CUSTOMIZE SUAS IMAGENS AQUI
@@ -110,7 +166,6 @@
             'images/8.png',
             'images/9.png',
             'images/10.png',
-        
         ];
 
         let currentIndex = 0;
@@ -118,10 +173,13 @@
         const scrollThrottle = 300;
         const track = document.getElementById('carouselTrack');
         const scrollbar = document.getElementById('scrollbar');
+        const scrollbarTrack = document.getElementById('scrollbarTrack');
         const scrollbarThumb = document.getElementById('scrollbarThumb');
+        const positionIndicator = document.getElementById('positionIndicator');
         
         let isDragging = false;
         let startY = 0;
+        let indicatorTimeout = null;
 
         // Cria as imagens
         images.forEach((img, index) => {
@@ -135,16 +193,30 @@
         });
 
         // Calcula tamanho do thumb baseado no número de imagens
-        const thumbHeight = (100 / images.length);
+        const thumbHeight = Math.max((100 / images.length), 8);
         scrollbarThumb.style.height = thumbHeight + '%';
+
+        // Mostra indicador de posição
+        function showPositionIndicator() {
+            positionIndicator.textContent = `${currentIndex + 1} / ${images.length}`;
+            positionIndicator.classList.add('show');
+            
+            clearTimeout(indicatorTimeout);
+            indicatorTimeout = setTimeout(() => {
+                positionIndicator.classList.remove('show');
+            }, 1500);
+        }
 
         // Atualiza posição do carrossel e scrollbar
         function updateCarousel() {
             track.style.transform = `translateY(-${currentIndex * 100}vh)`;
             
             // Atualiza posição do thumb
-            const thumbPosition = (currentIndex / images.length) * 100;
+            const maxScroll = images.length - 1;
+            const thumbPosition = maxScroll > 0 ? (currentIndex / maxScroll) * (100 - thumbHeight) : 0;
             scrollbarThumb.style.top = thumbPosition + '%';
+            
+            showPositionIndicator();
         }
 
         // Vai para slide específico
@@ -183,60 +255,110 @@
         scrollbar.addEventListener('click', (e) => {
             if (e.target === scrollbarThumb) return;
             
-            const rect = scrollbar.getBoundingClientRect();
+            const rect = scrollbarTrack.getBoundingClientRect();
             const clickY = e.clientY - rect.top;
             const percentage = clickY / rect.height;
             const targetIndex = Math.floor(percentage * images.length);
             goToSlide(targetIndex);
         });
 
-        // Arrastar o thumb
-        scrollbarThumb.addEventListener('mousedown', (e) => {
+        // Função para lidar com drag (mouse e touch)
+        function handleDragStart(clientY, e) {
             isDragging = true;
-            startY = e.clientY;
+            startY = clientY;
             scrollbarThumb.style.transition = 'none';
-            e.preventDefault();
-        });
+            if (e.preventDefault) e.preventDefault();
+        }
 
-        document.addEventListener('mousemove', (e) => {
+        function handleDragMove(clientY) {
             if (!isDragging) return;
             
-            const rect = scrollbar.getBoundingClientRect();
-            const deltaY = e.clientY - startY;
+            const rect = scrollbarTrack.getBoundingClientRect();
+            const deltaY = clientY - startY;
             const thumbRect = scrollbarThumb.getBoundingClientRect();
             const newTop = thumbRect.top - rect.top + deltaY;
-            const percentage = newTop / (rect.height - thumbRect.height);
+            const maxTop = rect.height - thumbRect.height;
+            const percentage = Math.max(0, Math.min(1, newTop / maxTop));
             const targetIndex = Math.round(percentage * (images.length - 1));
             
-            startY = e.clientY;
+            startY = clientY;
             goToSlide(targetIndex);
-        });
+        }
 
-        document.addEventListener('mouseup', () => {
+        function handleDragEnd() {
             if (isDragging) {
                 isDragging = false;
                 scrollbarThumb.style.transition = '';
             }
+        }
+
+        // Mouse events para desktop
+        scrollbarThumb.addEventListener('mousedown', (e) => {
+            handleDragStart(e.clientY, e);
         });
 
-        // Touch/swipe mobile
-        let touchStartY = 0;
-        window.addEventListener('touchstart', (e) => {
-            touchStartY = e.touches[0].clientY;
+        document.addEventListener('mousemove', (e) => {
+            handleDragMove(e.clientY);
         });
 
-        window.addEventListener('touchend', (e) => {
-            const touchEndY = e.changedTouches[0].clientY;
-            const diff = touchStartY - touchEndY;
+        document.addEventListener('mouseup', handleDragEnd);
+
+        // Touch events para mobile na scrollbar
+        scrollbarThumb.addEventListener('touchstart', (e) => {
+            handleDragStart(e.touches[0].clientY, e);
+        }, { passive: false });
+
+        document.addEventListener('touchmove', (e) => {
+            if (isDragging) {
+                handleDragMove(e.touches[0].clientY);
+                e.preventDefault();
+            }
+        }, { passive: false });
+
+        document.addEventListener('touchend', (e) => {
+            if (isDragging) {
+                handleDragEnd();
+                e.preventDefault();
+            }
+        }, { passive: false });
+
+        // Touch na track da scrollbar
+        scrollbarTrack.addEventListener('touchstart', (e) => {
+            if (e.target === scrollbarThumb) return;
             
-            if (Math.abs(diff) > 50) {
-                if (diff > 0) {
+            const rect = scrollbarTrack.getBoundingClientRect();
+            const touchY = e.touches[0].clientY - rect.top;
+            const percentage = touchY / rect.height;
+            const targetIndex = Math.floor(percentage * images.length);
+            goToSlide(targetIndex);
+            e.preventDefault();
+        }, { passive: false });
+
+        // Touch/swipe mobile no conteúdo principal
+        let touchStartY = 0;
+        let touchStartX = 0;
+        const carouselContainer = document.querySelector('.carousel-container');
+        
+        carouselContainer.addEventListener('touchstart', (e) => {
+            touchStartY = e.touches[0].clientY;
+            touchStartX = e.touches[0].clientX;
+        }, { passive: true });
+
+        carouselContainer.addEventListener('touchend', (e) => {
+            const touchEndY = e.changedTouches[0].clientY;
+            const touchEndX = e.changedTouches[0].clientX;
+            const diffY = touchStartY - touchEndY;
+            const diffX = touchStartX - touchEndX;
+            
+            // Garante que é um swipe vertical
+            if (Math.abs(diffY) > Math.abs(diffX) && Math.abs(diffY) > 50) {
+                if (diffY > 0) {
                     nextSlide();
                 } else {
                     prevSlide();
                 }
             }
-        });
+        }, { passive: true });
 
         // Teclado
         document.addEventListener('keydown', (e) => {
